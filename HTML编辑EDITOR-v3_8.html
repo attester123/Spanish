@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>HTML 可视化编辑器 v3</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root {
+  --bg:    #15171c; --panel: #1c1e26; --border: #2a2d3a;
+  --accent:#5b8af5; --green: #3ecf8e; --warn:   #f5a623;
+  --red:   #e05c5c; --text:  #c8cdd8; --dim:    #55607a;
+  --mono:  'JetBrains Mono','Cascadia Code','Consolas',monospace; --r: 5px;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+html,body { height:100vh; overflow:hidden;
+  font-family:'Segoe UI',system-ui,sans-serif;
+  background:var(--bg); color:var(--text); font-size:13px; }
+
+.app  { display:flex; flex-direction:column; height:100vh; }
+.work { display:flex; flex:1; overflow:hidden; }
+
+/* ── 顶栏 ── */
+.bar {
+  display:flex; align-items:center; gap:8px; padding:0 14px; height:44px;
+  flex-shrink:0; background:var(--panel); border-bottom:1px solid var(--border);
+  position:relative; z-index:300;
+}
+.bar-title { font-size:11px; font-weight:700; color:var(--dim); letter-spacing:.1em; text-transform:uppercase; }
+.sp { flex:1; }
+
+.badge {
+  display:inline-flex; align-items:center; gap:5px; padding:3px 10px;
+  border-radius:20px; font-size:11px; font-weight:500;
+  background:#22252f; color:var(--dim); transition:.2s; white-space:nowrap;
+}
+.badge .dot { width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0; }
+.badge.dirty  { background:#2d2a1a; color:var(--warn); }
+.badge.synced { background:#182a22; color:var(--green); }
+
+.btn {
+  cursor:pointer; border:1px solid var(--border); padding:5px 12px;
+  border-radius:var(--r); font-size:12px; font-weight:500; background:#22252f;
+  color:var(--text); transition:.15s; white-space:nowrap; flex-shrink:0;
+}
+.btn:hover { border-color:var(--accent); color:var(--accent); }
+.btn.green { background:var(--green); border-color:var(--green); color:#0d1f18; }
+.btn.green:hover { opacity:.85; color:#0d1f18; }
+.btn.red   { background:#2a1a1a; border-color:#6a3030; color:#f08080; }
+.btn.red:hover { border-color:var(--red); color:#ffaaaa; }
+
+/* ── 左侧 ── */
+#left {
+  width:460px; min-width:0; display:flex; flex-direction:column;
+  border-right:1px solid var(--border);
+  transition:width .25s cubic-bezier(.4,0,.2,1); overflow:hidden;
+}
+#left.hide { width:0; }
+
+.ph {
+  display:flex; align-items:center; gap:8px; padding:6px 12px;
+  border-bottom:1px solid var(--border); background:var(--panel); flex-shrink:0;
+}
+.pl { font-size:10px; font-weight:700; color:var(--dim); letter-spacing:.08em; text-transform:uppercase; }
+
+.stack { flex:1; position:relative; overflow:hidden; background:#111318; }
+#code {
+  position:absolute; inset:0; padding:13px 13px 13px 52px;
+  background:transparent; color:transparent; caret-color:#ddd;
+  font-family:var(--mono); font-size:13px; line-height:1.7;
+  border:none; resize:none; outline:none; white-space:pre; overflow:auto; z-index:2; tab-size:2;
+}
+#hl {
+  position:absolute; inset:0; padding:13px 13px 13px 52px;
+  font-family:var(--mono); font-size:13px; line-height:1.7;
+  pointer-events:none; z-index:1; overflow:hidden; white-space:pre-wrap; word-break:break-all;
+}
+#ln {
+  position:absolute; left:0; top:0; bottom:0; width:40px; padding:13px 5px 13px 0;
+  font-family:var(--mono); font-size:13px; line-height:1.7; color:var(--dim);
+  text-align:right; border-right:1px solid var(--border);
+  pointer-events:none; z-index:3; overflow:hidden; background:#111318; user-select:none;
+}
+.ln { display:block; }
+
+/* ── 分隔线 ── */
+#divider { width:4px; background:var(--border); cursor:col-resize; transition:background .15s; flex-shrink:0; }
+#divider:hover, #divider.drag { background:var(--accent); }
+
+/* ── 右侧 ── */
+#right { flex:1; display:flex; flex-direction:column; background:#e0e0e0; overflow:hidden; }
+#preview { flex:1; border:none; background:#fff; display:block; width:100%; }
+
+/* ── 属性面板 ── */
+#pp {
+  position:fixed; z-index:500; width:220px;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:8px; box-shadow:0 8px 32px rgba(0,0,0,.6); font-size:12px; overflow:hidden;
+  opacity:0; pointer-events:none; transform:translateY(6px) scale(.98); transition:opacity .15s, transform .15s;
+}
+#pp.on { opacity:1; pointer-events:all; transform:none; }
+
+.pp-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:8px 11px; border-bottom:1px solid var(--border); background:#22252f;
+  cursor:move; user-select:none;
+}
+.pp-tag { font-family:var(--mono); font-size:11px; color:var(--accent); font-weight:600; }
+.pp-x   { cursor:pointer; color:var(--dim); font-size:16px; line-height:1;
+           border:none; background:none; padding:0 2px; transition:color .15s; }
+.pp-x:hover { color:var(--text); }
+
+.pp-bd  { padding:10px 11px; display:flex; flex-direction:column; gap:7px; }
+.pp-row { display:flex; flex-direction:column; gap:3px; }
+.pp-row label { font-size:10px; color:var(--dim); text-transform:uppercase; letter-spacing:.04em; }
+
+.pp-row input[type=text] {
+  background:#12141a; border:1px solid var(--border); color:var(--text);
+  border-radius:4px; padding:4px 7px; font-size:12px; font-family:var(--mono);
+  width:100%; outline:none; transition:border .15s;
+}
+.pp-row input[type=text]:focus { border-color:var(--accent); }
+
+.cr { display:flex; align-items:center; gap:6px; }
+.cr input[type=color] {
+  width:28px; height:28px; border:1px solid var(--border);
+  border-radius:4px; background:none; cursor:pointer; padding:2px; flex-shrink:0;
+}
+.cr input[type=text] { flex:1; }
+
+.pp-tg { display:flex; gap:4px; }
+.pp-t  {
+  flex:1; cursor:pointer; border:1px solid var(--border); background:#12141a; color:var(--dim);
+  border-radius:4px; padding:4px 0; font-size:11px; font-weight:700; transition:.15s; text-align:center;
+}
+.pp-t:hover { border-color:var(--accent); color:var(--accent); }
+.pp-t.on    { background:var(--accent); border-color:var(--accent); color:#fff; }
+hr.pp-hr    { border:none; border-top:1px solid var(--border); margin:2px 0; }
+
+/* ── toast ── */
+#toast {
+  position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
+  background:var(--panel); border:1px solid var(--border); padding:6px 16px;
+  border-radius:20px; font-size:11px; color:var(--warn);
+  pointer-events:none; opacity:0; transition:opacity .25s; z-index:999;
+}
+#toast.on { opacity:1; }
+#file-in { display:none; }
+#drop-zone.drag-over::after {
+  content: '松开以打开 HTML 文件';
+  position:absolute; inset:0; z-index:10;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; color:var(--accent);
+  background:rgba(91,138,245,.12); border:2px dashed var(--accent);
+  border-radius:4px; pointer-events:none;
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="bar">
+    <span class="bar-title">HTML Editor v3</span>
+    <div id="badge" class="badge"><span class="dot"></span><span id="btxt">就绪</span></div>
+    <div class="sp"></div>
+    <button class="btn" onclick="$('html-in').click()">📂 打开文件</button>
+    <button class="btn" id="btn-tog"  onclick="togglePanel()">隐藏源码</button>
+    <button class="btn red"   id="btn-dis" onclick="discardEdits()" style="display:none">↺ 放弃修改</button>
+    <button class="btn"       id="btn-und" onclick="undoSync()"     style="display:none">⎌ 撤销同步</button>
+    <button class="btn"       onclick="syncToSource()" title="Ctrl+S">↑ 同步至源码</button>
+    <button class="btn green" onclick="exportHTML()">导出 HTML</button>
+  </div>
+
+  <div class="work">
+    <div id="left">
+      <div class="ph">
+        <span class="pl">源码</span>
+        <span id="loc" style="margin-left:auto;color:var(--dim);font-size:11px;">0 行</span>
+      </div>
+      <div class="stack" id="drop-zone">
+        <div id="ln"></div>
+        <pre id="hl"><code class="language-html" id="hi"></code></pre>
+        <textarea id="code" spellcheck="false" placeholder="在此粘贴 HTML..."></textarea>
+      </div>
+    </div>
+
+    <div id="divider"></div>
+
+    <div id="right">
+      <div class="ph">
+        <span class="pl">预览（点击元素可调格式）</span>
+        <span id="snote" style="margin-left:8px;font-size:11px;color:#e08060;display:none">⚠ 含 script</span>
+      </div>
+      <iframe id="preview"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- 属性面板 -->
+<div id="pp">
+  <div class="pp-hd">
+    <span class="pp-tag" id="pp-tag">&lt;p&gt;</span>
+    <button class="pp-x" onclick="ppHide()">×</button>
+  </div>
+
+  <div class="pp-bd">
+    <div class="pp-row">
+      <label>文字颜色</label>
+      <div class="cr">
+        <input type="color" id="pp-cp">
+        <input type="text"  id="pp-ct" placeholder="#000000">
+      </div>
+    </div>
+    <div class="pp-row">
+      <label>背景颜色</label>
+      <div class="cr">
+        <input type="color" id="pp-bp">
+        <input type="text"  id="pp-bt" placeholder="transparent">
+      </div>
+    </div>
+    <hr class="pp-hr">
+    <div class="pp-row">
+      <label>字号 (px)</label>
+      <div style="display:flex;gap:4px;align-items:center">
+        <button class="pp-t" style="width:28px;flex:none;font-size:15px;padding:2px 0"
+          onclick="ppStepSize(-1)">−</button>
+        <input type="number" id="pp-fs" placeholder="16" min="1" max="999"
+          style="flex:1;background:#12141a;border:1px solid var(--border);color:var(--text);
+                 border-radius:4px;padding:4px 7px;font-size:12px;font-family:var(--mono);
+                 outline:none;-moz-appearance:textfield">
+        <button class="pp-t" style="width:28px;flex:none;font-size:15px;padding:2px 0"
+          onclick="ppStepSize(+1)">+</button>
+      </div>
+    </div>
+    <div class="pp-row">
+      <label>行距</label>
+      <input type="text" id="pp-lh" placeholder="1.6">
+    </div>
+    <div class="pp-row">
+      <label>字间距</label>
+      <input type="text" id="pp-ls" placeholder="0em">
+    </div>
+    <hr class="pp-hr">
+    <div class="pp-row">
+      <label>粗体 / 斜体</label>
+      <div class="pp-tg">
+        <button class="pp-t" id="pp-bold" onclick="ppToggle('fontWeight','bold','normal',this)"><b>B</b></button>
+        <button class="pp-t" id="pp-ital" onclick="ppToggle('fontStyle','italic','normal',this)"><i>I</i></button>
+      </div>
+    </div>
+    <div class="pp-row">
+      <label>对齐</label>
+      <div class="pp-tg">
+        <button class="pp-t" id="pp-al" onclick="ppAlign('left',this)">左</button>
+        <button class="pp-t" id="pp-ac" onclick="ppAlign('center',this)">中</button>
+        <button class="pp-t" id="pp-ar" onclick="ppAlign('right',this)">右</button>
+      </div>
+    </div>
+    <hr class="pp-hr">
+    <div class="pp-row">
+      <label>圆角</label>
+      <input type="text" id="pp-br" placeholder="0px">
+    </div>
+    <div class="pp-row">
+      <label>内边距</label>
+      <input type="text" id="pp-pad" placeholder="0px">
+    </div>
+    <hr class="pp-hr">
+    <div class="pp-row">
+      <label>在此元素后插入</label>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px">
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('p','段落文字')">＋p</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('h2','标题')">＋h2</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('h3','小标题')">＋h3</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('li','列表项')">＋li</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('hr','')">＋hr</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsert('div','内容块')">＋div</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsertImgFile()">＋图片</button>
+        <button class="pp-t" style="flex:none;padding:3px 8px;font-size:11px" onclick="ppInsertImgUrl()">＋图片URL</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast">有未同步修改</div>
+<input type="file" id="file-in" accept="image/*">
+<input type="file" id="html-in" accept=".html,.htm" style="display:none">
+<input type="file" id="file-in-insert" accept="image/*" style="display:none">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script>
+'use strict';
+
+const $  = id => document.getElementById(id);
+const codeEl=$('code'), hiEl=$('hi'), hlEl=$('hl'), lnEl=$('ln'), locEl=$('loc');
+const iframe=$('preview'), badge=$('badge'), btxt=$('btxt');
+const toast=$('toast'), fileIn=$('file-in'), pp=$('pp'), ppTagEl=$('pp-tag');
+
+let _src='', _dirty=false, _hist=[], _actImg=null;
+let _rtimer=null, _obs=null, _popen=true, _ppEl=null;
+const H_MAX=20;
+
+const SKIP = new Set([
+  'HTML','HEAD','BODY','SCRIPT','STYLE','NOSCRIPT','TEMPLATE',
+  'META','LINK','BASE','IFRAME','CANVAS','SVG',
+  'INPUT','TEXTAREA','SELECT','OPTION','OPTGROUP','FORM',
+  'BR','HR','WBR','OBJECT','EMBED','AUDIO','VIDEO','TRACK','SOURCE','PICTURE','MAP','AREA'
+]);
+
+/* ── 源码编辑器 ── */
+let _htimer=null;
+function updateEditor(code) {
+  clearTimeout(_htimer);
+  _htimer = setTimeout(() => {
+    hiEl.textContent = code + (code.endsWith('\n') ? ' ' : '');
+    Prism.highlightElement(hiEl);
+  }, 80);
+  const lines = code.split('\n');
+  locEl.textContent = lines.length + ' 行';
+  lnEl.innerHTML = lines.map((_,i) => `<span class="ln">${i+1}</span>`).join('');
+}
+
+codeEl.oninput = () => {
+  updateEditor(codeEl.value);
+  clearTimeout(_rtimer);
+  _rtimer = setTimeout(() => renderIframe(codeEl.value), 600);
+};
+codeEl.onscroll = () => { hlEl.scrollTop = lnEl.scrollTop = codeEl.scrollTop; };
+codeEl.onkeydown = e => {
+  if (e.key !== 'Tab') return;
+  e.preventDefault();
+  const s=codeEl.selectionStart, v=codeEl.value;
+  codeEl.value = v.slice(0,s)+'  '+v.slice(codeEl.selectionEnd);
+  codeEl.selectionStart = codeEl.selectionEnd = s+2;
+  codeEl.dispatchEvent(new Event('input'));
+};
+
+/* ── iframe 渲染 ──
+   必须用 contentDocument.write()，不能用 Blob URL。
+   原因：file:// 协议下 Blob URL 的 origin 是 null，
+   与父页面不同源，iframe.contentDocument 访问会被浏览器拦截，
+   导致 injectEditing 从未执行、没有 contenteditable、无法编辑。
+   contentDocument.write() 与父页面天然同源，没有此问题。 */
+function renderIframe(html) {
+  _src = html;
+  _obs && _obs.disconnect();
+  $('snote').style.display = /<script\b/i.test(html) ? '' : 'none';
+
+  const doc = iframe.contentDocument;
+  doc.open();
+  doc.write(html);
+  doc.close();
+
+  // 等待页内脚本执行完毕（DOMContentLoaded / load 事件），再注入编辑行为
+  const win = iframe.contentWindow;
+  const inject = () => {
+    const d = iframe.contentDocument;
+    if (d && d.body) { injectEditing(d); watchDirty(d); }
+    setDirty(false);
+  };
+
+  if (win.document.readyState === 'complete') {
+    inject();
+  } else {
+    win.addEventListener('load', inject, { once: true });
+  }
+}
+
+/* ── 注入编辑行为 ── */
+function injectEditing(doc) {
+  // 编辑器辅助样式
+  const st = doc.createElement('style');
+  st.id = '__ve__';
+  st.textContent = `
+    [contenteditable=true]{outline:1px dashed rgba(91,138,245,.3)!important;border-radius:2px;transition:outline .15s}
+    [contenteditable=true]:focus{outline:1.5px solid rgba(91,138,245,.7)!important;background:rgba(91,138,245,.04)!important}
+    [data-ve-img]:hover{outline:2px dashed rgba(91,138,245,.5)!important;cursor:pointer}
+  `;
+  doc.head.appendChild(st);
+
+  // 点击 → 属性面板（capture 阶段）
+  doc.addEventListener('click', e => {
+    if (SKIP.has(e.target.tagName)) { ppHide(); return; }
+    const fr = iframe.getBoundingClientRect();
+    ppShow(e.target, fr.left + e.clientX, fr.top + e.clientY);
+  }, true);
+
+  // 为每个元素注入 contenteditable 和图片替换
+  doc.body.querySelectorAll('*').forEach(el => {
+    if (SKIP.has(el.tagName)) return;
+
+    const isLeaf = el.childElementCount === 0;
+    const hasTxt = [...el.childNodes].some(n => n.nodeType===3 && n.textContent.trim());
+    if (isLeaf || hasTxt) {
+      el.contentEditable = 'true';
+      el.addEventListener('keydown', ev => {
+        if (ev.key==='Enter') { ev.preventDefault(); doc.execCommand('insertLineBreak'); }
+      });
+    }
+
+    if (el.tagName === 'IMG') {
+      el.dataset.veImg = '1';
+      el.title = '点击替换图片';
+      el.addEventListener('click', ev => { ev.stopPropagation(); _actImg=el; fileIn.click(); });
+      el.addEventListener('dragover',  ev => { ev.preventDefault(); el.style.outline='2px dashed #5b8af5'; });
+      el.addEventListener('dragleave', ()  => { el.style.outline=''; });
+      el.addEventListener('drop', ev => {
+        ev.preventDefault(); el.style.outline='';
+        const f=ev.dataTransfer.files[0];
+        if (f?.type.startsWith('image/')) loadImg(f, el);
+      });
+    }
+  });
+}
+
+function loadImg(file, imgEl) {
+  const r=new FileReader();
+  r.onload = e => { imgEl.src=e.target.result; };
+  r.readAsDataURL(file);
+}
+fileIn.onchange = e => {
+  if (e.target.files[0] && _actImg) { loadImg(e.target.files[0], _actImg); e.target.value=''; }
+};
+$('file-in-insert').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  e.target.value = '';
+  const reader = new FileReader();
+  reader.onload = ev => _doInsertImg(ev.target.result);
+  reader.readAsDataURL(f);
+};
+
+/* ── 脏状态 ── */
+function watchDirty(doc) {
+  _obs = new MutationObserver(muts => {
+    const real = muts.some(m => !(
+      m.type==='attributes' &&
+      ['contenteditable','data-ve-img','title'].includes(m.attributeName)
+    ));
+    if (real) setDirty(true);
+  });
+  _obs.observe(doc.body, {
+    subtree:true, childList:true, characterData:true,
+    attributes:true, attributeFilter:['src','href','style','class']
+  });
+}
+function setDirty(v) {
+  _dirty = v;
+  badge.className = 'badge'+(v?' dirty':'');
+  btxt.textContent = v ? '有未同步修改' : '就绪';
+  $('btn-dis').style.display = v ? '' : 'none';
+  if (v) { toast.classList.add('on'); setTimeout(()=>toast.classList.remove('on'),2200); }
+}
+
+/* ── 读取干净 HTML ── */
+function getCleanHTML() {
+  const doc = iframe.contentDocument;
+  if (!doc) return _src;
+  const clone = doc.documentElement.cloneNode(true);
+  clone.querySelector('#__ve__')?.remove();
+  clone.querySelectorAll('[contenteditable]').forEach(el=>el.removeAttribute('contenteditable'));
+  clone.querySelectorAll('[data-ve-img]').forEach(el=>el.removeAttribute('data-ve-img'));
+  clone.querySelectorAll('img[title="点击替换图片"]').forEach(el=>el.removeAttribute('title'));
+  clone.querySelectorAll('[style]').forEach(el=>{
+    el.style.outline='';
+    if (!el.getAttribute('style').trim()) el.removeAttribute('style');
+  });
+  const dt = (_src.match(/^(<!DOCTYPE[^>]*>)/i)||['<!DOCTYPE html>'])[0];
+  return dt+'\n'+clone.outerHTML;
+}
+
+/* ── 同步 / 放弃 / 撤销 / 导出 ── */
+function syncToSource() {
+  _hist.push(_src);
+  if (_hist.length>H_MAX) _hist.shift();
+  $('btn-und').style.display='';
+  const html=getCleanHTML();
+  _src=html; codeEl.value=html; updateEditor(html); renderIframe(html);
+  badge.className='badge synced'; btxt.textContent='已同步';
+  $('btn-dis').style.display='none';
+  setTimeout(()=>{badge.className='badge';btxt.textContent='就绪';},2000);
+}
+function discardEdits() {
+  renderIframe(_src);
+  badge.className='badge'; btxt.textContent='就绪'; $('btn-dis').style.display='none';
+}
+function undoSync() {
+  if (!_hist.length) return;
+  const prev=_hist.pop();
+  _src=prev; codeEl.value=prev; updateEditor(prev); renderIframe(prev);
+  if (!_hist.length) $('btn-und').style.display='none';
+  badge.className='badge synced'; btxt.textContent='已撤销';
+  setTimeout(()=>{badge.className='badge';btxt.textContent='就绪';},2000);
+}
+function loadHTMLText(text) {
+  _hist.push(_src);
+  if (_hist.length > H_MAX) _hist.shift();
+  $('btn-und').style.display = '';
+  codeEl.value = text;
+  updateEditor(text);
+  renderIframe(text);
+  badge.className = 'badge synced'; btxt.textContent = '已载入';
+  setTimeout(() => { badge.className='badge'; btxt.textContent='就绪'; }, 2000);
+}
+
+$('html-in').onchange = e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  e.target.value = '';
+  const r = new FileReader();
+  r.onload = ev => loadHTMLText(ev.target.result);
+  r.readAsText(f, 'UTF-8');
+};
+
+// 拖放 HTML 文件到源码区
+const dropZone = $('drop-zone');
+dropZone.addEventListener('dragover', e => {
+  const hasFile = [...(e.dataTransfer.items||[])].some(i => i.kind==='file');
+  if (!hasFile) return;
+  e.preventDefault();
+  dropZone.classList.add('drag-over');
+});
+dropZone.addEventListener('dragleave', e => {
+  if (!dropZone.contains(e.relatedTarget)) dropZone.classList.remove('drag-over');
+});
+dropZone.addEventListener('drop', e => {
+  dropZone.classList.remove('drag-over');
+  const f = [...e.dataTransfer.files].find(f => /\.html?$/i.test(f.name));
+  if (!f) return;
+  e.preventDefault();
+  const r = new FileReader();
+  r.onload = ev => loadHTMLText(ev.target.result);
+  r.readAsText(f, 'UTF-8');
+});
+
+function exportHTML() {
+  const html=getCleanHTML();
+  const url=URL.createObjectURL(new Blob([html],{type:'text/html'}));
+  Object.assign(document.createElement('a'),{href:url,download:'exported.html'}).click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();syncToSource();}
+  if ((e.ctrlKey||e.metaKey)&&e.key==='z'&&document.activeElement!==codeEl){e.preventDefault();undoSync();}
+});
+
+/* ── 属性面板 ── */
+function toHex(val) {
+  if (!val||val==='transparent'||val==='rgba(0, 0, 0, 0)') return '#ffffff';
+  const d=document.createElement('div');
+  d.style.color=val; document.body.appendChild(d);
+  const c=getComputedStyle(d).color; document.body.removeChild(d);
+  const m=c.match(/\d+/g);
+  return m?'#'+m.slice(0,3).map(n=>(+n).toString(16).padStart(2,'0')).join(''):'#ffffff';
+}
+
+function ppShow(el, cx, cy) {
+  _ppEl = el;
+  const cs = el.ownerDocument.defaultView.getComputedStyle(el);
+  ppTagEl.textContent = '<'+el.tagName.toLowerCase()+'>';
+
+  const ch=toHex(el.style.color||cs.color);
+  $('pp-cp').value=ch; $('pp-ct').value=el.style.color||cs.color;
+  const bh=toHex(el.style.backgroundColor||cs.backgroundColor);
+  $('pp-bp').value=bh; $('pp-bt').value=el.style.backgroundColor||cs.backgroundColor;
+  $('pp-fs').value  = Math.round(parseFloat(el.style.fontSize||cs.fontSize)) || '';
+  $('pp-lh').value=el.style.lineHeight||cs.lineHeight;
+  $('pp-ls').value=el.style.letterSpacing||cs.letterSpacing;
+  $('pp-br').value=el.style.borderRadius||cs.borderRadius;
+  $('pp-pad').value=el.style.padding||cs.padding;
+  $('pp-bold').classList.toggle('on', +cs.fontWeight>=600);
+  $('pp-ital').classList.toggle('on', cs.fontStyle==='italic');
+  ['pp-al','pp-ac','pp-ar'].forEach(id=>$(id).classList.remove('on'));
+  const amap={left:'pp-al',center:'pp-ac',right:'pp-ar'};
+  if (amap[cs.textAlign]) $(amap[cs.textAlign]).classList.add('on');
+
+  // 面板始终在右侧预览区内，不遮住左侧源码
+  const fr=$('right').getBoundingClientRect();
+  const pw=220, ph=500;
+  let x=cx+14, y=cy-20;
+  x=Math.max(fr.left+8, x);
+  if (x+pw>fr.right-8) x=fr.right-pw-8;
+  if (y+ph>innerHeight-8) y=innerHeight-ph-8;
+  if (y<fr.top+50) y=fr.top+50;
+  pp.style.left=x+'px'; pp.style.top=y+'px';
+  pp.classList.add('on');
+}
+function ppHide() { pp.classList.remove('on'); _ppEl=null; }
+
+
+function ppSet(p, v) {
+  if (_ppEl) _ppEl.style[p] = v;
+}
+function ppToggle(p, on, off, btn) {
+  const isOn = btn.classList.toggle('on');
+  if (_ppEl) _ppEl.style[p] = isOn ? on : off;
+}
+function ppAlign(v, btn) {
+  ['pp-al','pp-ac','pp-ar'].forEach(id => $(id).classList.remove('on'));
+  btn.classList.add('on');
+  // 对齐不适用于选中文字（行级属性），始终作用于元素
+  if (_ppEl) _ppEl.style.textAlign = v;
+}
+
+
+// ± 微调字号（全局作用域，HTML onclick 才能调用）
+function ppStepSize(delta) {
+  const inp = $('pp-fs');
+  const cur = parseInt(inp.value) || (
+    _ppEl ? Math.round(parseFloat(
+      _ppEl.ownerDocument.defaultView.getComputedStyle(_ppEl).fontSize
+    )) : 16
+  );
+  const next = Math.max(1, cur + delta);
+  inp.value = next;
+  ppSet('fontSize', next + 'px');
+}
+// 在当前选中元素后插入新元素
+function ppInsert(tag, text) {
+  if (!_ppEl) return;
+  const doc = iframe.contentDocument;
+  const newEl = doc.createElement(tag);
+  if (text) {
+    newEl.textContent = text;
+    // 可编辑
+    if (!['hr','br'].includes(tag)) {
+      newEl.contentEditable = 'true';
+      newEl.addEventListener('keydown', ev => {
+        if (ev.key==='Enter') { ev.preventDefault(); doc.execCommand('insertLineBreak'); }
+      });
+    }
+  }
+  // 插到 _ppEl 后面
+  _ppEl.insertAdjacentElement('afterend', newEl);
+  // 自动选中新元素，打开面板
+  const fr = iframe.getBoundingClientRect();
+  const rect = newEl.getBoundingClientRect();
+  ppShow(newEl, fr.left + rect.left + rect.width/2, fr.top + rect.top + rect.height/2);
+  // 光标定位到新元素
+  if (text && newEl.contentEditable === 'true') {
+    newEl.focus();
+    const range = doc.createRange();
+    range.selectNodeContents(newEl);
+    const sel = doc.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+}
+
+// 插入图片——本地上传
+function ppInsertImgFile() {
+  if (!_ppEl) return;
+  $('file-in-insert').click();
+}
+// 插入图片——URL
+function ppInsertImgUrl() {
+  if (!_ppEl) return;
+  const url = prompt('请输入图片地址（URL）：');
+  if (!url || !url.trim()) return;
+  _doInsertImg(url.trim());
+}
+function _doInsertImg(src) {
+  const doc = iframe.contentDocument;
+  const img = doc.createElement('img');
+  img.src = src;
+  img.style.maxWidth = '100%';
+  img.dataset.veImg = '1';
+  img.title = '点击替换图片';
+  img.addEventListener('click', ev => { ev.stopPropagation(); _actImg = img; $('file-in').click(); });
+  img.addEventListener('dragover',  ev => { ev.preventDefault(); img.style.outline='2px dashed #5b8af5'; });
+  img.addEventListener('dragleave', ()  => { img.style.outline=''; });
+  img.addEventListener('drop', ev => {
+    ev.preventDefault(); img.style.outline='';
+    const f = ev.dataTransfer.files[0];
+    if (f?.type.startsWith('image/')) loadImg(f, img);
+  });
+  _ppEl.insertAdjacentElement('afterend', img);
+  // 选中新图片
+  const fr = iframe.getBoundingClientRect();
+  const rect = img.getBoundingClientRect();
+  ppShow(img, fr.left + rect.left + rect.width/2, fr.top + rect.top + rect.height/2);
+}
+
+// 纯数字自动补 px，已有单位或空值原样返回
+function addUnit(v) {
+  v = v.trim();
+  return (v && /^-?[\d.]+$/.test(v)) ? v + 'px' : v;
+}
+
+(function bindPP() {
+  const cp=$('pp-cp'),ct=$('pp-ct');
+  cp.oninput=()=>{ct.value=cp.value;ppSet('color',cp.value);};
+  ct.oninput=()=>{ppSet('color',ct.value);try{cp.value=toHex(ct.value);}catch(_){}};
+  const bp=$('pp-bp'),bt=$('pp-bt');
+  bp.oninput=()=>{bt.value=bp.value;ppSet('backgroundColor',bp.value);};
+  bt.oninput=()=>{ppSet('backgroundColor',bt.value);try{bp.value=toHex(bt.value);}catch(_){}};
+  $('pp-fs').oninput=e=>{ const v=e.target.value; if(v) ppSet('fontSize', v+'px'); };
+  $('pp-lh').oninput=e=>ppSet('lineHeight',   e.target.value); // 行距可以无单位（纯数字倍数）
+  $('pp-ls').oninput=e=>ppSet('letterSpacing',addUnit(e.target.value));
+  $('pp-br').oninput=e=>ppSet('borderRadius', addUnit(e.target.value));
+  $('pp-pad').oninput=e=>ppSet('padding',     addUnit(e.target.value));
+})();
+
+document.addEventListener('click', e => {
+  if (!pp.contains(e.target) && e.target!==iframe) ppHide();
+});
+
+/* ── 面板折叠 + 分隔线拖拽 ── */
+function togglePanel() {
+  _popen=!_popen;
+  $('left').classList.toggle('hide',!_popen);
+  $('btn-tog').textContent=_popen?'隐藏源码':'显示源码';
+}
+const divEl=$('divider'),leftEl=$('left');
+let _drag=false,_sx=0,_sw=0;
+divEl.onmousedown=e=>{
+  _drag=true;_sx=e.clientX;_sw=leftEl.offsetWidth;
+  divEl.classList.add('drag');
+  document.body.style.cursor='col-resize';document.body.style.userSelect='none';
+};
+document.onmousemove=e=>{
+  if(!_drag)return;
+  leftEl.style.width=Math.max(180,Math.min(innerWidth-180,_sw+e.clientX-_sx))+'px';
+};
+document.onmouseup=()=>{
+  if(!_drag)return;_drag=false;divEl.classList.remove('drag');
+  document.body.style.cursor=document.body.style.userSelect='';
+};
+
+
+/* ── 持久化 & 启动 ── */
+
+
+(function init(){})();
+
+/* ── 属性面板拖拽 ── */
+(function initPPDrag() {
+  let _pdrag = false, _pdx = 0, _pdy = 0;
+  const hd = pp.querySelector('.pp-hd');
+  hd.addEventListener('mousedown', e => {
+    // 点关闭按钮时不触发拖拽
+    if (e.target.closest('.pp-x')) return;
+    _pdrag = true;
+    _pdx = e.clientX - pp.offsetLeft;
+    _pdy = e.clientY - pp.offsetTop;
+  });
+  document.addEventListener('mousemove', e => {
+    if (!_pdrag) return;
+    let x = e.clientX - _pdx;
+    let y = e.clientY - _pdy;
+    x = Math.max(0, Math.min(innerWidth  - pp.offsetWidth,  x));
+    y = Math.max(0, Math.min(innerHeight - pp.offsetHeight, y));
+    pp.style.left = x + 'px';
+    pp.style.top  = y + 'px';
+  });
+  // 同时监听 iframe 内的 mouseup：鼠标在 iframe 里松开时父页面收不到事件，
+  // 需要单独重置，否则 _pdrag 卡死为 true，面板一直跟着鼠标走。
+  const stopDrag = () => { _pdrag = false; };
+  document.addEventListener('mouseup', stopDrag);
+  iframe.addEventListener('load', () => {
+    iframe.contentDocument && iframe.contentDocument.addEventListener('mouseup', stopDrag);
+  });
+  // 页面已加载时也补上
+  if (iframe.contentDocument) iframe.contentDocument.addEventListener('mouseup', stopDrag);
+})();
+</script>
+</body>
+</html>
