@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Earnings Watch · April 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #09090c;
+  --surface:  #111116;
+  --card:     #141419;
+  --border:   #1e1e28;
+  --border2:  #2a2a38;
+  --text:     #e4e4f0;
+  --muted:    #5a5a78;
+  --dim:      #3a3a52;
+  --accent:   #f0e040;
+  --accent2:  #40e0c8;
+  --red:      #ff4d6a;
+  --green:    #3ddc97;
+  --week-mon: #b8a0ff;
+  --week-tue: #ff9f7a;
+  --week-wed: #7adcff;
+  --week-thu: #ffcf50;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  min-height: 100vh;
+  padding: 40px 24px 80px;
+  overflow-x: hidden;
+}
+
+/* noise overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+.wrap { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; }
+
+/* ── HEADER ── */
+header {
+  margin-bottom: 48px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.header-left {}
+.eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+h1 {
+  font-family: 'Syne', sans-serif;
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -2px;
+  color: var(--text);
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.header-meta {
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  line-height: 1.8;
+  text-align: right;
+}
+.header-meta strong { color: var(--text); }
+
+/* ── WEEK STRIP ── */
+.week-strip {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-bottom: 32px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  padding: 3px;
+  background: var(--surface);
+}
+.week-col {
+  padding: 10px 8px;
+  text-align: center;
+  border-radius: 7px;
+}
+.week-col.active { background: var(--border); }
+.week-day-label {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 4px;
+}
+.week-col.active .week-day-label { color: var(--muted); }
+.week-date {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--border2);
+}
+.week-col.active .week-date { color: var(--text); }
+.week-tickers {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3px;
+}
+.week-pill {
+  font-family: 'Syne', sans-serif;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 5px;
+  border-radius: 3px;
+}
+
+/* ── CARDS GRID ── */
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  position: relative;
+  transition: border-color 0.2s, transform 0.2s;
+  animation: fadeUp 0.5s both;
+}
+.card:hover {
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.card:nth-child(1) { animation-delay: 0.05s; }
+.card:nth-child(2) { animation-delay: 0.10s; }
+.card:nth-child(3) { animation-delay: 0.15s; }
+.card:nth-child(4) { animation-delay: 0.20s; }
+.card:nth-child(5) { animation-delay: 0.25s; }
+.card:nth-child(6) { animation-delay: 0.30s; }
+.card:nth-child(7) { animation-delay: 0.35s; }
+
+/* color accent bar */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+}
+
+/* ── CARD HEADER ── */
+.card-head {
+  padding: 18px 18px 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-left { display: flex; align-items: center; gap: 12px; }
+.ticker-logo {
+  width: 40px; height: 40px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  flex-shrink: 0;
+}
+.ticker-info {}
+.ticker-sym {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1;
+}
+.ticker-name {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+.card-date {
+  text-align: right;
+}
+.date-num {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.date-detail {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+  letter-spacing: 0.5px;
+}
+.day-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-family: 'Syne', sans-serif;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
+/* ── DIVIDER ── */
+.card-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 0 18px;
+}
+
+/* ── NOTES AREA ── */
+.card-notes {
+  padding: 14px 18px 18px;
+}
+.notes-label {
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--dim);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.notes-count {
+  font-size: 9px;
+  color: var(--dim);
+}
+
+/* notes list */
+.notes-list { margin-bottom: 10px; }
+.note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  margin-bottom: 5px;
+  animation: noteIn 0.2s ease;
+}
+@keyframes noteIn {
+  from { opacity: 0; transform: scaleY(0.8); transform-origin: top; }
+  to   { opacity: 1; transform: scaleY(1); }
+}
+.note-bullet {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--dim);
+  flex-shrink: 0;
+  margin-top: 5px;
+}
+.note-text {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  flex: 1;
+  word-break: break-all;
+}
+.note-del {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--dim);
+  font-size: 14px;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s;
+  font-family: 'DM Mono', monospace;
+}
+.note-del:hover { color: var(--red); }
+
+/* add note row */
+.add-row {
+  display: flex;
+  gap: 6px;
+}
+.note-input {
+  flex: 1;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 8px 11px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s, background 0.15s;
+}
+.note-input::placeholder { color: var(--dim); }
+.note-input:focus {
+  border-color: var(--accent2);
+  background: var(--card);
+}
+.add-btn {
+  background: var(--border2);
+  border: none;
+  border-radius: 7px;
+  width: 34px;
+  height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 18px;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.add-btn:hover {
+  background: var(--accent2);
+  color: var(--bg);
+}
+
+/* ── COUNTDOWN BAR ── */
+.countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.countdown-label { font-size: 10px; color: var(--dim); letter-spacing: 1px; }
+.countdown-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+}
+.urgency-bar {
+  flex: 1;
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-left: 4px;
+}
+.urgency-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+
+/* ── SAVE TOAST ── */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--green);
+  color: #000;
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 10px 24px;
+  border-radius: 100px;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  z-index: 99;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── FOOTER ── */
+footer {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 1px;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .cards-grid { grid-template-columns: 1fr; }
+  .week-strip { grid-template-columns: repeat(3, 1fr) repeat(2, 1fr); }
+  h1 { font-size: 36px; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header>
+    <div class="header-left">
+      <div class="eyebrow">Earnings Watch</div>
+      <h1>APRIL<br><em>2026</em></h1>
+    </div>
+    <div class="header-meta">
+      <strong>7 companies</strong> reporting<br>
+      Apr 16 — Apr 29<br>
+      <span id="today-label">—</span>
+    </div>
+  </header>
+
+  <!-- WEEK STRIP -->
+  <div class="week-strip" id="week-strip"></div>
+
+  <!-- CARDS -->
+  <div class="cards-grid" id="cards-grid"></div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">已保存</div>
+
+<footer>EARNINGS CALENDAR · DATA AUTO-SAVED TO LOCALSTORAGE</footer>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────
+const COMPANIES = [
+  { sym:'NFLX',  name:'Netflix',        date:'4/16', day:'周四', month:4, d:16, color:'#e50914', bg:'#e5091420' },
+  { sym:'TSLA',  name:'Tesla',          date:'4/22', day:'周三', month:4, d:22, color:'#cc0000', bg:'#cc000020' },
+  { sym:'UNH',   name:'UnitedHealth',   date:'4/21', day:'周二', month:4, d:21, color:'#006bb6', bg:'#006bb620' },
+  { sym:'AMZN',  name:'Amazon',         date:'4/23', day:'周四', month:4, d:23, color:'#ff9900', bg:'#ff990020' },
+  { sym:'HOOD',  name:'Robinhood',      date:'4/28', day:'周二', month:4, d:28, color:'#00c805', bg:'#00c80520' },
+  { sym:'META',  name:'Meta Platforms', date:'4/29', day:'周三', month:4, d:29, color:'#1877f2', bg:'#1877f220' },
+  { sym:'MSFT',  name:'Microsoft',      date:'4/29', day:'周三', month:4, d:29, color:'#00a4ef', bg:'#00a4ef20' },
+];
+
+const WEEKDAYS = {
+  '周一':'MON','周二':'TUE','周三':'WED','周四':'THU','周五':'FRI'
+};
+const DAYCOLORS = {
+  '周一':'var(--week-mon)','周二':'var(--week-tue)',
+  '周三':'var(--week-wed)','周四':'var(--week-thu)','周五':'var(--week-fri)'
+};
+
+const STORAGE_KEY = 'earnings_notes_apr2026';
+let notes = {};
+
+function loadNotes() {
+  try { notes = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) { notes = {}; }
+}
+function saveNotes() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
+  showToast();
+}
+function getNotes(sym) { return notes[sym] || []; }
+function addNote(sym, text) {
+  if (!text.trim()) return;
+  if (!notes[sym]) notes[sym] = [];
+  notes[sym].push(text.trim());
+  saveNotes();
+}
+function delNote(sym, idx) {
+  if (!notes[sym]) return;
+  notes[sym].splice(idx, 1);
+  saveNotes();
+}
+
+// ── COUNTDOWN ──────────────────────────────────────────────
+function daysUntil(month, day) {
+  const now = new Date();
+  const target = new Date(now.getFullYear(), month-1, day);
+  const diff = Math.ceil((target - now) / 86400000);
+  return diff;
+}
+
+// ── TOAST ──────────────────────────────────────────────────
+let toastTimer;
+function showToast() {
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+}
+
+// ── WEEK STRIP ────────────────────────────────────────────
+function buildWeekStrip() {
+  const strip = document.getElementById('week-strip');
+  const weekDays = [
+    { label:'MON', date:'4/14' },
+    { label:'TUE', date:'4/15' },
+    { label:'WED', date:'4/16' },
+    { label:'THU', date:'4/17' },
+    { label:'FRI', date:'4/18' },
+  ];
+  // Second week
+  const weeks = [
+    [{ label:'MON', date:'4/14' },{ label:'TUE', date:'4/15' },{ label:'WED', date:'4/16' },{ label:'THU', date:'4/17' },{ label:'FRI', date:'4/18' }],
+    [{ label:'MON', date:'4/21' },{ label:'TUE', date:'4/22' },{ label:'WED', date:'4/23' },{ label:'THU', date:'4/24' },{ label:'FRI', date:'4/25' }],
+    [{ label:'MON', date:'4/28' },{ label:'TUE', date:'4/29' },],
+  ];
+
+  // build a flat list of all active days with tickers
+  const dateToTickers = {};
+  COMPANIES.forEach(c => {
+    if (!dateToTickers[c.date]) dateToTickers[c.date] = [];
+    dateToTickers[c.date].push(c);
+  });
+
+  // just show a single row: active days
+  const activeDates = ['4/16','4/21','4/22','4/23','4/28','4/29'];
+  activeDates.forEach(dateStr => {
+    const col = document.createElement('div');
+    col.className = 'week-col active';
+
+    const [m, d] = dateStr.split('/');
+    const dt = new Date(2026, parseInt(m)-1, parseInt(d));
+    const dayNames = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+    const dayName = dayNames[dt.getDay()];
+
+    col.innerHTML = `
+      <div class="week-day-label">${dayName}</div>
+      <div class="week-date">${d}</div>
+      <div class="week-tickers" id="wt-${dateStr.replace('/','_')}"></div>
+    `;
+    strip.appendChild(col);
+  });
+
+  // fill tickers
+  COMPANIES.forEach(c => {
+    const id = 'wt-' + c.date.replace('/',  '_');
+    const el = document.getElementById(id);
+    if (el) {
+      const pill = document.createElement('span');
+      pill.className = 'week-pill';
+      pill.textContent = c.sym;
+      pill.style.background = c.bg;
+      pill.style.color = c.color;
+      el.appendChild(pill);
+    }
+  });
+}
+
+// ── CARDS ─────────────────────────────────────────────────
+function buildCards() {
+  const grid = document.getElementById('cards-grid');
+  grid.innerHTML = '';
+
+  // sort by date
+  const sorted = [...COMPANIES].sort((a,b) => a.d - b.d || a.sym.localeCompare(b.sym));
+
+  sorted.forEach(c => {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.setProperty('--card-color', c.color);
+    card.innerHTML = `
+      <div style="height:2px;background:${c.color};opacity:0.7;"></div>
+      <div class="card-head">
+        <div class="card-left">
+          <div class="ticker-logo" style="background:${c.bg};color:${c.color}">
+            ${c.sym.substring(0,4)}
+          </div>
+          <div class="ticker-info">
+            <div class="ticker-sym" style="color:${c.color}">${c.sym}</div>
+            <div class="ticker-name">${c.name}</div>
+          </div>
+        </div>
+        <div class="card-date">
+          <div class="date-num">APR ${c.d}</div>
+          <div class="date-detail">2026</div>
+          <div class="day-badge" style="background:${c.bg};color:${c.color}">${c.day}</div>
+        </div>
+      </div>
+      <div class="card-divider"></div>
+      <div class="card-notes">
+        <div class="notes-label">
+          <span>备注 NOTES</span>
+          <span class="notes-count" id="nc-${c.sym}"></span>
+        </div>
+        <div class="notes-list" id="nl-${c.sym}"></div>
+        <div class="add-row">
+          <input class="note-input" id="ni-${c.sym}" placeholder="添加备注…" maxlength="100"
+            onkeydown="if(event.key==='Enter'){addNoteUI('${c.sym}')}">
+          <button class="add-btn" onclick="addNoteUI('${c.sym}')" title="添加">+</button>
+        </div>
+      </div>
+      <div class="countdown-row">
+        <span class="countdown-label">COUNTDOWN</span>
+        <span class="countdown-val" id="cd-${c.sym}"></span>
+        <div class="urgency-bar">
+          <div class="urgency-fill" id="uf-${c.sym}" style="background:${c.color}"></div>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+    renderNotes(c.sym);
+    renderCountdown(c.sym, c.d);
+  });
+}
+
+function renderNotes(sym) {
+  const list = document.getElementById('nl-' + sym);
+  const cnt  = document.getElementById('nc-' + sym);
+  const arr  = getNotes(sym);
+  cnt.textContent = arr.length ? `${arr.length}条` : '';
+  list.innerHTML = '';
+  arr.forEach((text, idx) => {
+    const item = document.createElement('div');
+    item.className = 'note-item';
+    item.innerHTML = `
+      <div class="note-bullet"></div>
+      <div class="note-text">${escHtml(text)}</div>
+      <button class="note-del" onclick="delNoteUI('${sym}', ${idx})" title="删除">×</button>
+    `;
+    list.appendChild(item);
+  });
+}
+
+function addNoteUI(sym) {
+  const inp = document.getElementById('ni-' + sym);
+  addNote(sym, inp.value);
+  inp.value = '';
+  renderNotes(sym);
+}
+
+function delNoteUI(sym, idx) {
+  delNote(sym, idx);
+  renderNotes(sym);
+}
+
+function renderCountdown(sym, day) {
+  const cdEl = document.getElementById('cd-' + sym);
+  const ufEl = document.getElementById('uf-' + sym);
+  const d = daysUntil(4, day);
+
+  if (d < 0) {
+    cdEl.textContent = '已发布';
+    cdEl.style.color = 'var(--muted)';
+    ufEl.style.width = '100%';
+    ufEl.style.opacity = '0.3';
+  } else if (d === 0) {
+    cdEl.textContent = '今日 🔥';
+    cdEl.style.color = 'var(--accent)';
+    ufEl.style.width = '100%';
+  } else {
+    cdEl.textContent = `${d}天后`;
+    cdEl.style.color = 'var(--text)';
+    const pct = Math.max(0, Math.min(100, 100 - (d / 20) * 100));
+    ufEl.style.width = pct + '%';
+  }
+}
+
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── TODAY LABEL ───────────────────────────────────────────
+function setTodayLabel() {
+  const now = new Date();
+  const days = ['日','一','二','三','四','五','六'];
+  document.getElementById('today-label').textContent =
+    `TODAY ${now.getMonth()+1}/${now.getDate()} 周${days[now.getDay()]}`;
+}
+
+// ── INIT ──────────────────────────────────────────────────
+loadNotes();
+buildWeekStrip();
+buildCards();
+setTodayLabel();
+</script>
+</body>
+</html>
